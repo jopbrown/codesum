@@ -1,0 +1,4 @@
+tmp
+dist
+go.work
+*.code-workspace

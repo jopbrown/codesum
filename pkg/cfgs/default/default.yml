@@ -1,0 +1,46 @@
+DebugMode: false
+LogPath: ${appDir}/log/codesum.log
+ChatGpt:
+    EndPoint: ${CHATGPT_END_POINT}
+    APIKey: ${CHATGPT_API_KEY}
+    AccessToken: ${CHATGPT_ACCESS_TOKEN}
+    Proxy: ${HTTPS_PROXY}
+    Model: gpt-3.5-turbo
+SummaryRules:
+    Include:
+        - "*.go"
+        - "*.c"
+        - "*.cpp"
+        - "*.h"
+        - "*.js"
+        - "*.ts"
+        - "*.json"
+        - "*.svelte"
+        - "*.py"
+    Exclude:
+        - tmp
+        - dist
+        - node_modules
+    OutDir: ${appDir}/summary_report
+    OutFileName: summary_${timestamp}_${folderBaseName}.md
+Prompt:
+    System: |
+        You are a software architect who is analyzing a code project.
+        Now, your are going to summarize the following project file by file.
+    CodeSummary: |
+        Please provide a summary of the following code file.
+        Please focus on the logic of the code.
+        Do not explain the imported packages.
+        Please answer in the form of a Markdown list.
+        The file named "${fileName}" and containing the following code:
+        ```
+        ${fileContent}
+        ```
+    SummaryTable: |
+        Briefly describe the features of the following files: [${filesCommaList}]
+        Put the description in a JSON object as the format `{"{filename}":"{description}"}` .
+        Each description should be answered in few sentences.
+        Do not add other json fields.
+        Do not add other information.
+    FinalSummary: |
+        Based on the above analyses, summarize the overall features of the software in few sentences.
