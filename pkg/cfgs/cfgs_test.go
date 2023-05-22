@@ -23,9 +23,11 @@ func TestLoadConfig(t *testing.T) {
 		"folderBaseName": "mycode",
 	}
 
-	err = cfg.SaveConfig(`tmp/testconfig.yml`)
-	require.NoError(t, err)
+	// err = cfg.SaveConfig(`tmp/testconfig.yml`)
+	// require.NoError(t, err)
 
+	assert.Equal(t, "https://api.openai.com/v1", cfg.ChatGpt.EndPoint.String())
+	assert.Equal(t, "", cfg.ChatGpt.Proxy.String())
 	assert.Equal(t, fsutil.AppDir()+"/summary_report", cfg.SummaryRules.OutDir.ExpandByDict(dict))
 	assert.Equal(t, "summary_"+dict["timestamp"]+"_mycode.md", cfg.SummaryRules.OutFileName.ExpandByDict(dict))
 }

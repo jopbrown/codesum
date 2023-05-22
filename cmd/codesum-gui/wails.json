@@ -1,0 +1,14 @@
+{
+    "$schema": "https://wails.io/schemas/config.v2.json",
+    "name": "codesum-gui",
+    "outputfilename": "codesum-gui",
+    "wailsjsdir": "frontend/src/lib",
+    "frontend:install": "pnpm install",
+    "frontend:build": "pnpm run build",
+    "frontend:dev:watcher": "pnpm run dev",
+    "frontend:dev:serverUrl": "auto",
+    "author": {
+        "name": "jopbrown",
+        "email": "msshane2008@gmail.com"
+    }
+}

@@ -7,6 +7,7 @@ ENABLE_ARCHIVE ?= false
 
 ifdef OS
 WORKSPACE := $(shell cygpath -m $(WORKSPACE))
+PWD := $(shell cygpath -m `pwd`)
 endif
 
 DIST_DIR := $(WORKSPACE)/dist/$(BUILD_NAME)
@@ -22,12 +23,12 @@ TARGET_DIR := $(DIST_DIR)/$(BUILD_NAME)_$(VERSION)_$(BUILD_TIME)
 TARGET_NAME = $(BUILD_NAME)_$(GOOS)_$(GOARCH)
 TARGET_EXE = $(TARGET_NAME)$(TARGET_EXT)
 TARGET_PATH = $(TARGET_DIR)/$(TARGET_EXE)
-BUILD_CMD = go build -trimpath -ldflags="-s -w $(BUILD_LDFLAGS)" -buildvcs=false -o $(TARGET_PATH) .
+BUILD_CMD = $(GOCMD) build -trimpath -ldflags="-s -w $(BUILD_LDFLAGS)" -o $(TARGET_PATH) .
 
 .PHONY: all $(TARGET)
 all: $(TARGET)
 	## $(BUILD_NAME) build ok
-$(TARGET): resource
+$(TARGET): prepare
 	### build $@ ...
 	$(BUILD_CMD)
 ifeq ($(ENABLE_UPX),true)
@@ -47,6 +48,14 @@ windows-amd64: GOOS=windows
 windows-amd64: GOARCH=amd64
 windows-amd64: TARGET_EXT=.exe
 
+.PHONY: prepare
+prepare: precmd resource
+	## prepare done
+
+.PHONY: precmd
+precmd:
+	$(PRECMD)
+
 .PHONY: mkdir
 mkdir:
 	@mkdir -p $(TARGET_DIR)
@@ -59,7 +68,6 @@ endif
 
 .PHONY: resource
 resource: mkdir
-	$(PRECMD)
 ifneq ($(RESOURCE),)
 	## copy resource ...
 	@cp -rf $(RESOURCE) $(TARGET_DIR)/
@@ -68,6 +76,3 @@ endif
 .PHONY: clean
 clean:
 	rm -rf $(CLEAN_PATH) $(DIST_DIR)
-
-echo:
-	mklink /D $(DIST_DIR)/latest $(TARGET_DIR)

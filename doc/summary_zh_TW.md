@@ -1,211 +1,131 @@
 # Code Summary
 
-The analyzed software is a code summarization application. It is designed to generate summaries for code files using the ChatGPT model. The software provides a command-line interface for users to interact with and configure various aspects of the summarization process, including prompts, rules, and output settings. It also includes features for generating code summary questions and producing comprehensive reports. Additionally, utility functions are available to handle common operations and ensure smooth execution. Overall, the software aims to simplify the process of code comprehension and analysis by providing concise and informative summaries.
+這個軟體是一個程式碼摘要工具，具有以下主要特點：它能夠根據指定的程式碼檔案，使用聊天GPT模型生成程式碼的摘要報告。軟體提供了彈性的配置選項，包括摘要規則、問題提示和輸出設定等，用戶可以根據需要進行定製。此外，軟體還提供了生成摘要報告的功能，以便使用者可以方便地查看和分享生成的摘要結果。整體而言，這個軟體提供了一個自動化的方式來產生程式碼的摘要，幫助程式開發人員更快速地理解和分析程式碼。
 
 | File | Description |
 | --- | --- |
-| cmd/codesum/main.go | The main.go file in the cmd/codesum package is the entry point of the code summarization application. It contains the main function that initializes the application and handles command-line arguments. |
-| pkg/cfgs/cfgs.go | The cfgs.go file in the pkg/cfgs package provides configuration structures and methods for managing various settings and options used in the code summarization process. It includes functions for loading and parsing configuration files. |
-| pkg/cfgs/chatgpt.go | The chatgpt.go file in the pkg/cfgs package defines the ChatGpt structure, which represents the configuration settings related to the ChatGPT model used for code summarization. It specifies the endpoint, API key, access token, model, and proxy settings. |
-| pkg/cfgs/prompt.go | The prompt.go file in the pkg/cfgs package defines the Prompt structure, which represents the configuration settings related to prompts used for code summarization. It includes fields for system prompts, code summary prompts, summary table prompts, and final summary prompts. |
-| pkg/cfgs/rule.go | The rule.go file in the pkg/cfgs package defines the SummaryRules structure, which represents the configuration settings related to summary rules for code summarization. It includes fields for inclusion/exclusion rules, output directory, and output file name. |
-| pkg/sumer/question.go | The question.go file in the pkg/sumer package provides functions for generating code summary questions. It includes functions for creating questions based on file summaries and summary tables, as well as a function for generating the final summary question. |
-| pkg/sumer/report.go | The report.go file in the pkg/sumer package contains data structures and methods for generating code summary reports. It includes structures for code summaries, partial summaries, file summaries, and question-answer pairs. The file provides methods for writing the code summary as a Markdown file, generating the file summary table, and managing partial and final summaries. |
-| pkg/sumer/summary.go | The 'summary.go' file in the 'pkg/sumer' package implements a code summarization feature. It defines a 'Summarizer' struct with methods for initializing a summarizer, summarizing code files, and sending requests to the GPT (OpenAI) API for generating summaries. It also includes helper functions for handling file content, saving a markdown report, and checking if the context is canceled. |
-| pkg/utils/helper.go | The 'helper.go' file in the 'pkg/utils' package provides utility functions for various operations. It includes functions for updating the API server access token, trimming the header of a Markdown table from a summary string, and checking for specific types of errors related to HTTP status codes and unexpected end-of-file. These functions are used in other parts of the codebase to perform specific tasks. |
-
+| cmd/codesum/main.go | 這個檔案是程式碼摘要工具的主要進入點。它負責解析命令列參數、讀取配置檔、執行程式碼摘要的相關操作。 |
+| pkg/cfgs/cfgs.go | 這個檔案定義了程式碼摘要工具的配置結構和方法。它提供了載入和儲存配置的函式，以及處理配置檔案的相關邏輯。 |
+| pkg/cfgs/chatgpt.go | 這個檔案定義了聊天GPT模型的配置結構。它包含了與聊天GPT相關的各種設定，如端點、API金鑰、存取權杖、模型和代理。 |
+| pkg/cfgs/prompt.go | 這個檔案定義了摘要提示的配置結構。它包含了系統提示、程式碼摘要、摘要表格和最終摘要的相關設定。 |
+| pkg/cfgs/rule.go | 這個檔案定義了摘要規則的配置結構。它包含了要包含和排除的摘要規則、輸出目錄和輸出檔案名稱的設定。 |
+| pkg/sumer/question.go | 這個檔案定義了關於摘要問題的函式。它提供了根據檔案名稱和內容生成問題的功能，以及根據檔案列表生成摘要表格問題的功能。 |
+| pkg/sumer/report.go | 這個檔案定義了程式碼摘要報告相關的結構和方法。它提供了儲存報告、產生 Markdown 格式報告和操作部分摘要、檔案摘要的相關功能。 |
+| pkg/sumer/summary.go | 這個檔案定義了程式碼摘要相關的結構和方法。它包含了程式碼摘要、檔案摘要和問答相關的功能，用於處理程式碼的摘要和生成摘要報告。 |
+| pkg/utils/helper.go | 該文件包含一組工具函數，用於幫助其他程式模組進行不同的操作。它包括更新 API 伺服器存取權杖的函數、處理 Markdown 表格摘要的函數，以及判斷特定錯誤類型的函數。 |
 
 ## cmd/codesum/main.go
 
-This file contains the main entry point and the logic for the code summarization application.
+# cmd/codesum/main.go
 
-1. The file imports various packages required for the application's functionality.
-2. It declares variables `BuildName`, `BuildVersion`, `BuildHash`, and `BuildTime` representing the application's build information.
-3. The `args` struct is declared to hold command-line arguments.
-4. The `init` function sets up command-line flags and parses the arguments.
-5. The `main` function is the entry point of the application. It calls the `run` function and handles any errors by logging them and terminating the program.
-6. The `run` function loads the configuration from a specified file, applies logging configuration, and updates the access token for an API server if provided in the configuration. Then it creates a new `Summarizer` instance and starts the code summarization process.
-7. The `startSummarize` function sets up a context with cancellation support and listens for termination signals. It creates an error group and executes the code summarization in a separate goroutine. If a termination signal is received or the context is canceled, the function terminates the code summarization. It waits for the goroutine to finish and returns any encountered errors.
-8. The `pushMessage` function is a callback that receives a message from the summarizer and logs it, truncating the content if it exceeds a maximum length.
-9. The `parseArgs` function parses the command-line arguments and sets the `args.codeFolder` variable to the provided code folder path. It also prints usage information and terminates the program if the arguments are invalid.
-10. The `applyLog` function opens a log file based on the provided configuration, creates a logger, and sets it as the global logger.
+這個檔案是程式的進入點，主要執行程式的邏輯。
 
-Overall, this code file sets up the necessary configuration, initializes the logger, and orchestrates the code summarization process based on the provided command-line arguments and configuration.
+- 匯入相關的套件
+- 定義全域變數 BuildName、BuildVersion、BuildHash、BuildTime
+- 定義命令列參數的結構 args
+- 初始化函式 `init()`：設定命令列參數的預設值，並解析命令列參數。
+- 主程式進入點 `main()`：執行 `run()` 函式，如果有錯誤則使用 `log.Fatal()` 輸出錯誤訊息。
+- 函式 `run()`：載入並合併設定檔，套用日誌設定，印出程式版本資訊，更新 API 伺服器的存取權杖，建立 Summarizer 物件，開始進行摘要處理。
+- 函式 `startSummarize()`：建立並管理 Goroutine，接收系統信號以終止處理。
+- 函式 `pushMessage()`：用於輸出訊息。
+- 函式 `parseArgs()`：解析命令列參數，檢查參數數量，並設定 `args.codeFolder` 的值。
+- 函式 `applyLog()`：套用日誌設定。
+
+這個檔案的主要邏輯為載入設定檔、設定日誌、建立 Summarizer 物件並開始進行摘要處理，並對命令列參數進行解析和驗證。
 
 ## pkg/cfgs/cfgs.go
 
-This file contains the logic for loading, merging, and saving configurations for the code summarization application.
+這個檔案實現了與設定檔相關的功能，包括載入、合併、保存和寫入設定檔。
 
-1. The file imports various packages required for the configuration handling.
-2. The `init` function registers an environment variable lookup function with the `strutil` package to enable expanding environment variables in configuration values.
-3. The `Expander` type is defined as an alias for `strutil.Expander`.
-4. The `Config` struct represents the configuration for the application, including fields for debug mode, log path, chat GPT settings, summary rules, and prompts.
-5. The `defaultCfgFs` variable is declared as an embedded file system that contains the default configuration files.
-6. The `DefaultConfig` function retrieves the default configuration by opening the default configuration file from the embedded file system and reading its contents. It returns the parsed configuration.
-7. The `LoadConfig` function loads a configuration from the specified file by opening and reading it. It returns the parsed configuration or an error if the file cannot be opened or the configuration is invalid.
-8. The `ReadConfig` function decodes a configuration from an `io.Reader` and returns the parsed configuration or an error if the decoding fails.
-9. The `MergeDefault` method merges the current configuration with the default configuration using the `mergo.Merge` function. It returns an error if the merge fails.
-10. The `SaveConfig` method saves the configuration to the specified file by opening the file for writing and writing the encoded configuration to it. It returns an error if the file cannot be opened or the writing fails.
-11. The `WriteConfig` method encodes the configuration and writes it to the specified `io.Writer`. It returns an error if the encoding or writing fails.
+- 匯入相關的套件
+- 初始化函式 `init()`：註冊環境變數的擴展處理器。
+- 定義類型 `Expander` 為 `strutil.Expander` 的別名。
+- 定義結構類型 `Config`，包含設定檔中的各項設定。
+- 定義嵌入資源 `defaultCfgFs`，用於存儲預設設定檔。
+- 函式 `DefaultConfig()`：載入並回傳預設設定檔。
+- 函式 `LoadConfig(fname string)`：從指定的檔案載入設定檔，並回傳 `Config` 物件。
+- 函式 `ReadConfig(r io.Reader)`：從 `io.Reader` 載入設定檔，並回傳 `Config` 物件。
+- 函式 `MergeDefault()`：將預設設定檔合併到當前的 `Config` 物件中。
+- 函式 `SaveConfig(fname string)`：將 `Config` 物件保存到指定的檔案。
+- 函式 `WriteConfig(w io.Writer)`：將 `Config` 物件寫入 `io.Writer`。
 
-Overall, this code file provides functions and methods for loading, merging, and saving configurations for the code summarization application. It supports default configurations, reading configurations from files, merging configurations with defaults, and writing configurations to files.
 
 ## pkg/cfgs/chatgpt.go
 
-This file defines the `ChatGpt` struct, which represents the configuration settings for the ChatGpt component of the code summarization application.
+這個檔案定義了與 ChatGpt 相關的設定項目。
 
-1. The file declares the `ChatGpt` struct.
-2. The `ChatGpt` struct has the following fields:
-   - `EndPoint`: An `Expander` type that represents the endpoint for the ChatGpt API.
-   - `APIKey`: An `Expander` type that represents the API key for accessing the ChatGpt API.
-   - `AccessToken`: An `Expander` type that represents the access token for the ChatGpt API.
-   - `Model`: An `Expander` type that represents the model to be used by the ChatGpt component.
-   - `Proxy`: An `Expander` type that represents the proxy configuration for the ChatGpt component.
-
-Overall, this code file defines the structure of the ChatGpt configuration, specifying the various fields required for the ChatGpt component of the code summarization application.
+- 定義結構類型 `ChatGpt`，包含與 ChatGpt 相關的設定項目，如端點（EndPoint）、API 金鑰（APIKey）、存取權杖（AccessToken）、模型（Model）和代理（Proxy）等。
 
 ## pkg/cfgs/prompt.go
 
-This file defines the `Prompt` struct, which represents the configuration settings for the prompts used in the code summarization application.
+這個檔案定義了與提示訊息（Prompt）相關的設定項目。
 
-1. The file declares the `Prompt` struct.
-2. The `Prompt` struct has the following fields:
-   - `System`: An `Expander` type that represents the prompt for the system-related messages.
-   - `CodeSummary`: An `Expander` type that represents the prompt for code summary messages.
-   - `SummaryTable`: An `Expander` type that represents the prompt for the summary table.
-   - `FinalSummary`: An `Expander` type that represents the prompt for the final summary.
-
-Overall, this code file defines the structure of the Prompt configuration, specifying the various fields required for the prompts used in the code summarization application.
+- 定義結構類型 `Prompt`，包含與提示訊息相關的設定項目，如系統提示（System）、程式碼摘要提示（CodeSummary）、摘要表格提示（SummaryTable）和最終摘要提示（FinalSummary）等。
 
 ## pkg/cfgs/rule.go
 
-This file defines the `SummaryRules` struct, which represents the configuration settings for the summary rules in the code summarization application.
+這個檔案定義了摘要規則（SummaryRules）相關的設定項目。
 
-1. The file declares the `SummaryRules` struct.
-2. The `SummaryRules` struct has the following fields:
-   - `Include`: A string slice representing the patterns to include for code summarization.
-   - `Exclude`: A string slice representing the patterns to exclude from code summarization.
-   - `OutDir`: An `Expander` type that represents the output directory for the code summaries.
-   - `OutFileName`: An `Expander` type that represents the output file name for the code summaries.
-
-Overall, this code file defines the structure of the SummaryRules configuration, specifying the various fields required for configuring the summary rules in the code summarization application. It allows specifying patterns to include and exclude, as well as the output directory and file name for the code summaries.
+- 定義結構類型 `SummaryRules`，包含摘要規則的設定項目，如包含條件（Include）、排除條件（Exclude）、輸出目錄（OutDir）和輸出檔名（OutFileName）等。這些設定項目用於指定在進行摘要處理時的檔案選取和輸出設定。
 
 ## pkg/sumer/question.go
 
-This file contains functions that generate questions or prompts used by the code summarization component of the application.
+這個檔案定義了摘要相關的問題（Question）函式。
 
-1. The file imports the necessary packages for the code.
-2. The `FileSummaryQuestion` function takes a prompt (represented by an `strutil.Expander`), a file name, and the content of a file. It expands the prompt by replacing placeholders with the file name and content, and returns the resulting question or prompt.
-3. The `SummaryTableQuestion` function takes a prompt (represented by an `strutil.Expander`) and a list of file names. It joins the file names with commas and expands the prompt by replacing a placeholder with the comma-separated list of file names. The resulting question or prompt is then returned.
-4. The `FinalSummaryQuestion` function takes a prompt (represented by an `strutil.Expander`). It directly returns the expanded prompt as a string without any additional placeholders or modifications.
-
-Overall, this code file provides utility functions for generating questions or prompts used in the code summarization process. These functions use the `strutil.Expander` to dynamically expand the prompts by replacing specific placeholders with relevant values.
+- 函式 `FileSummaryQuestion(prompt strutil.Expander, fileName, fileContent string)`：根據指定的提示擴展器、檔案名稱和檔案內容，生成一個用於檔案摘要的問題。
+- 函式 `SummaryTableQuestion(prompt strutil.Expander, fileList []string)`：根據指定的提示擴展器和檔案清單，生成一個用於摘要表格的問題。將檔案清單以逗號分隔後擴展到提示中。
+- 函式 `FinalSummaryQuestion(prompt strutil.Expander)`：根據指定的提示擴展器，生成一個用於最終摘要的問題。回傳原始的提示內容。
 
 ## pkg/sumer/report.go
 
-This file contains various data structures and methods related to generating code summaries and generating reports.
+這個檔案定義了程式碼摘要報告相關的結構和方法。
 
-1. The file imports the necessary packages for the code.
-2. The `CodeSummary` struct represents a code summary and contains partial summaries and a final summary question and answer.
-3. The `NewCodeSummary` function creates a new instance of `CodeSummary` and initializes its partial list.
-4. The `SaveMarkdown` method saves the code summary as a Markdown file with the provided filename.
-5. The `WriteMarkdown` method writes the code summary in Markdown format to the provided writer.
-6. The `WriteFileSummaryTable` method writes the file summary table in Markdown format to the provided writer.
-7. The `GetFileSummaryTable` method returns the file summary table as a string.
-8. The `AddPartialSummaries` method adds partial summaries to the code summary with the given system prompt and returns the added partial summaries.
-9. The `RequestFinalSummaryMessages` method constructs and returns a list of messages (chat completion messages) required for generating the final summary. It includes the system prompt, all partial summaries, and the final summary question.
-10. The `SetFinalSummaryQA` method sets the final summary question and answer of the code summary and returns the created `QA` instance.
-11. The `FinalSummary` method returns the content of the final summary.
-12. The `PartialSummaries` struct represents partial summaries for a code summary and contains the system prompt, file summaries, and a summary question and answer.
-13. The `FileSummary` struct represents a summary for a specific file and contains the filename and a question-answer pair.
-14. The `QA` struct represents a question and answer pair and contains two messages: the question (user message) and the answer (assistant message).
-15. The `NewQA` function creates a new instance of `QA` with the given question and answer content.
-16. The `SetSystemPrompt` method sets the system prompt for the partial summaries and returns the created system message.
-17. The `RequestFileSummaryMessages` method constructs and returns a list of messages (chat completion messages) required for generating the file summary. It includes the system prompt and all file summary questions and answers.
-18. The `AddFileSummary` method adds a file summary to the partial summaries with the given filename, question, and answer, and returns the added file summary.
-19. The `PopFileSummary` method removes and returns the last file summary from the partial summaries.
-20. The `GetSummary` method returns the content of the summary (answer) for a file or the entire partial summaries.
-21. The `RequestSummaryMessages` method constructs and returns a list of messages (chat completion messages) required for generating the summary. It includes the system prompt, all file summary questions and answers, and the summary question.
-22. The `SetSummaryQA` method sets the summary question and answer for the partial summaries and returns the created `QA` instance.
-23. The `GetSummary` method returns the content of the summary (answer) for the partial summaries.
-24. The `FileList` method returns a list of filenames associated with the partial summaries.
-
-Overall, this code file provides data structures and methods for managing code summaries, file summaries, and generating reports in Markdown format. It allows adding partial summaries, setting system prompts, generating questions and answers, and saving the code summary report.
+- 型別 `Message`：用於表示開放AI的聊天完成訊息。
+- 型別 `CodeSummary`：程式碼摘要的結構，包含部分摘要列表和最終摘要問答。
+  - 方法 `NewCodeSummary() *CodeSummary`：建立並回傳一個新的程式碼摘要結構。
+  - 方法 `SaveMarkdown(fname string) error`：將程式碼摘要以 Markdown 格式儲存到指定的檔案中。
+  - 方法 `WriteMarkdown(w io.Writer) error`：將程式碼摘要以 Markdown 格式寫入指定的 io.Writer。
+  - 方法 `WriteFileSummaryTable(w io.Writer)`：將檔案摘要表格以 Markdown 格式寫入指定的 io.Writer。
+  - 方法 `GetFileSummaryTable() string`：取得檔案摘要表格的字串表示。
+  - 方法 `AddPartialSummaries(systemPrompt string) *PartialSummaries`：新增部分摘要並回傳。
+  - 方法 `RequestFinalSummaryMessages(question string) []Message`：根據問題回傳最終摘要的訊息列表。
+  - 方法 `SetFinalSummaryQA(question, answer string) *QA`：設定最終摘要的問題與回答。
+  - 方法 `FinalSummary() string`：取得最終摘要的內容。
+- 型別 `PartialSummaries`：部分摘要的結構，包含系統提示、檔案摘要列表和摘要問答。
+- 型別 `FileSummary`：檔案摘要的結構，包含檔案名稱和摘要問答。
+- 型別 `QA`：摘要問答的結構，包含問題和回答的聊天完成訊息。
+- 方法 `NewQA(question, answer string) *QA`：建立並回傳一個新的摘要問答結構。
+- 方法 `SetSystemPrompt(prompt string) *Message`：設定系統提示訊息並回傳。
+- 方法 `RequestFileSummaryMessages(question string) []Message`：根據問題回傳檔案摘要的訊息列表。
+- 方法 `AddFileSummary(fileName, question, answer string) *FileSummary`：新增檔案摘要並回傳。
+- 方法 `PopFileSummary() *FileSummary`：彈出最後一個檔案摘要並回傳。
+- 方法 `GetSummary() string`：取得摘要問答的回答內容。
+- 方法 `RequestSummaryMessages(question string) []Message`：根據問題
 
 ## pkg/sumer/summary.go
 
-This file contains the implementation of a code summarization package called `sumer`. The package provides a `Summarizer` struct with various methods for summarizing code files.
+以下是 "pkg/sumer/summary.go" 這個程式碼檔案的摘要：
 
-#### Struct: Summarizer
-- `cfg`: Configuration object.
-- `gptClient`: Client for the OpenAI GPT model.
-- `fileFilter`: Matcher for filtering code files based on inclusion and exclusion rules.
-- `pushMsgCallback`: Callback function for pushing chat completion messages.
+- `NewSummarizer` 函式用於建立 `Summarizer` 的實例。該函式會初始化並返回一個 `Summarizer` 物件，並設定相關的屬性和回調函式。
+- `Summarize` 方法用於進行程式碼摘要。它接受一個代表程式碼資料夾的路徑，並在該資料夾中處理程式碼檔案的摘要工作。該方法會遍歷程式碼檔案並使用 GPT 模型向 OpenAI 服務發送請求，獲取程式碼的摘要結果。最終，它會生成摘要報告並保存為 Markdown 格式。
+- `sendRequest` 方法用於向 OpenAI 服務發送摘要請求。它接受一個 `ChatCompletionRequest` 對象，將請求發送到 OpenAI 並接收回應。在接收回應期間，它會將回應內容逐步累積起來，最終返回完整的摘要結果。
+- `getCodeFileContent` 函式用於讀取程式碼檔案的內容。它接受程式碼檔案的路徑，讀取該檔案的內容並返回檔案名稱和內容兩個字符串。
+- `saveMarkdownReport` 方法用於將摘要報告保存為 Markdown 檔案。它接受程式碼資料夾的路徑和 `CodeSummary` 物件，根據配置的規則生成摘要報告的路徑，並將報告內容保存到指定的檔案中。
+- `isCtxCanceled` 函式用於檢查是否取消了上下文。它接受一個上下文對象，檢查是否已經收到了取消信號。
 
-#### Function: NewSummarizer
-- Creates a new instance of `Summarizer`.
-- Accepts the configuration object (`cfg`) and a callback function (`pushMsgCallback`) as parameters.
-- Initializes the `cfg` and `gptClient` fields of the `Summarizer` instance.
-- Compiles the inclusion and exclusion rules for file filtering.
-- Returns the initialized `Summarizer` instance or an error.
-
-#### Method: Summarizer.Summarize
-- Summarizes the code files in a given folder.
-- Accepts a context (`ctx`) and the path to the code folder (`codeFolder`) as parameters.
-- Retrieves the list of code files using the `fsutil.ListWithMatcher` function and the `fileFilter` matcher.
-- Initializes a `CodeSummary` object.
-- Adds partial summaries for the system prompt using the `Prompt.System` configuration.
-- Calls the `pushMsgCallback` with the system partial summary message.
-- Iterates over each code file and performs the following steps:
-  - Checks if the context is canceled and breaks the loop if it is.
-  - Retrieves the file name and content using the `getCodeFileContent` function.
-  - Constructs a question for the file summary using the file name and content.
-  - Requests file summary messages using the partial summary object.
-  - Sends a request to the OpenAI GPT model using the `sendRequest` method.
-  - Adds the file summary to the `CodeSummary` object.
-- Iterates over each partial summary and performs the following steps:
-  - Constructs a question for the summary table using the file list.
-  - Requests summary messages using the partial summary object.
-  - Sends a request to the OpenAI GPT model using the `sendRequest` method.
-  - Updates the summary for the partial summary object.
-- Constructs a question for the final summary using the `Prompt.FinalSummary` configuration.
-- Requests final summary messages using the `CodeSummary` object.
-- Sends a request to the OpenAI GPT model using the `sendRequest` method.
-- Sets the final summary for the `CodeSummary` object.
-- Saves the Markdown report using the `saveMarkdownReport` method.
-- Returns
+這些函式和方法共同協作，通過使用 GPT 模型和 OpenAI 服務來實現程式碼的摘要功能。它們處理程式碼資料夾中的檔案，將相關的請求發送到 OpenAI 服務並獲取回應，最終生成和保存摘要報告。
 
 ## pkg/utils/helper.go
 
-This file contains utility functions for various operations.
+### UpdateApiServerAccessToken(endpoint, token string) error
+此函式接收兩個參數 `endpoint` 和 `token`，用於更新 API 伺服器的存取權杖。它將檢查 `endpoint` 的有效性，然後建立一個 URL 以進行 PATCH 請求。此請求將包含一個 JSON 載荷，其中包含要更新的權杖。請求的標頭將包含 `Content-Type` 和 `Authorization`。然後，它使用 HTTP 客戶端執行請求並檢查回應狀態碼。如果回應的狀態碼不是 200，則返回錯誤；否則返回 nil。
 
-#### Function: UpdateApiServerAccessToken
-- Updates the access token for the API server.
-- Accepts the API server endpoint and the new token as parameters.
-- Parses the endpoint URL and constructs the request URL.
-- Converts the token to JSON payload.
-- Creates an HTTP PATCH request with the request URL and payload.
-- Sets the request headers.
-- Sends the request using an HTTP client.
-- Checks the response status code and returns an error if it's not 200 OK.
+### TrimMDTableHeader(summary string) string
+此函式接收一個參數 `summary`，用於處理 Markdown 表格的摘要。它會逐行讀取並過濾 `summary` 中的內容，從第三行開始將所有非空行寫入字符串建構器中。然後返回建構器的內容。
 
-#### Function: TrimMDTableHeader
-- Trims the header of a Markdown table from the given summary string.
-- Accepts the summary string as a parameter.
-- Uses a scanner to iterate through each line of the summary.
-- Skips empty lines and keeps track of the line number.
-- Appends non-empty lines to a string builder after skipping the first two lines (the header).
-- Returns the trimmed summary string.
+### IsErrHTTP413(err error) bool
+此函式接收一個錯誤參數 `err`，用於判斷是否為 HTTP 413 錯誤。它檢查錯誤是否是 `openai.RequestError` 或 `openai.APIError`，並檢查它們的 `HTTPStatusCode` 是否為 413。如果是，則返回 true；否則返回 false。
 
-#### Function: IsErrHTTP413
-- Checks if the given error indicates an HTTP 413 Request Entity Too Large error.
-- Accepts an error as a parameter.
-- Checks if the error is of type `*openai.RequestError` and has an HTTP status code of 413.
-- Checks if the error is of type `*openai.APIError` and has an HTTP status code of 413.
-- Returns `true` if the error indicates a 413 error, `false` otherwise.
+### IsErrUnexpectedEOF(err error) bool
+此函式接收一個錯誤參數 `err`，用於判斷是否為意外的 EOF（文件結尾）錯誤。它使用 `errors.Is` 函式檢查錯誤是否等於 `io.ErrUnexpectedEOF`。如果是，則返回 true；否則返回 false。
 
-#### Function: IsErrUnexpectedEOF
-- Checks if the given error indicates an unexpected end-of-file error.
-- Accepts an error as a parameter.
-- Uses the `errors.Is` function to check if the error is equal to `io.ErrUnexpectedEOF`.
-- Returns `true` if the error indicates an unexpected end-of-file, `false` otherwise.

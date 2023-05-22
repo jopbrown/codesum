@@ -90,7 +90,7 @@ func startSummarize(sumer *sumer.Summarizer) error {
 
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		err := sumer.Summarize(ctx, args.codeFolder)
+		_, err := sumer.Summarize(ctx, args.codeFolder)
 		if err != nil {
 			return errors.ErrorAt(err)
 		}

@@ -13,18 +13,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func init() {
-	strutil.RegisterExpandHandler(os.LookupEnv)
-}
-
 type Expander = strutil.Expander
 
 type Config struct {
-	DebugMode    bool          `yaml:"DebugMode"`
-	LogPath      Expander      `yaml:"LogPath"`
-	ChatGpt      *ChatGpt      `yaml:"ChatGpt"`
-	SummaryRules *SummaryRules `yaml:"SummaryRules"`
-	Prompt       *Prompt       `yaml:"Prompt"`
+	DebugMode    bool          `yaml:"DebugMode" json:"debug_mode,omitempty"`
+	LogPath      Expander      `yaml:"LogPath" json:"log_path,omitempty"`
+	ChatGpt      *ChatGpt      `yaml:"ChatGpt" json:"chat_gpt,omitempty"`
+	SummaryRules *SummaryRules `yaml:"SummaryRules" json:"summary_rules,omitempty"`
+	Prompt       *Prompt       `yaml:"Prompt" json:"prompt,omitempty"`
 }
 
 //go:embed default

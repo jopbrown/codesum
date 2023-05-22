@@ -4,7 +4,7 @@ CLEAN_PATH := tmp dist
 MAKE_CMD := make --no-print-directory
 
 .PHONY: all
-all: $(BUILD_TARGET)
+all: $(BUILD_TARGET) export
 	# all build ok
 
 .PHONY: $(BUILD_TARGET)
@@ -15,7 +15,7 @@ $(BUILD_TARGET): tidy
 .PHONY: tidy
 tidy:
 	# tidy workspace ...
-	@if [[ -n "$$(go env GOWORK)" ]]; then go work sync; else go mod tidy;fi
+	go mod tidy
 
 CLEAN_TARGET := $(addprefix clean-,$(BUILD_TARGET))
 .PHONY: clean $(CLEAN_TARGET)
@@ -42,3 +42,8 @@ generate:
 .PHONY: update
 update:
 	git pull --recurse-submodules
+
+.PHONY: export
+export:
+	mkdir dist/src
+	git archive --format zip --output dist/src/archive.zip HEAD

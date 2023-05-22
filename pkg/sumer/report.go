@@ -45,6 +45,11 @@ func (cs *CodeSummary) WriteMarkdown(w io.Writer) error {
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, cs.FinalSummary())
 	fmt.Fprintln(w)
+
+	slices.SortFunc(cs.PartialList, func(a, b *PartialSummaries) bool {
+		return a.FilesSummary[0].FileName < b.FilesSummary[0].FileName
+	})
+
 	cs.WriteFileSummaryTable(w)
 	fmt.Fprintln(w)
 
@@ -216,21 +221,6 @@ func (ps *FileSummary) GetSummary() string {
 	}
 
 	return ps.QA.Answer.Content
-}
-
-func (pa *PartialSummaries) RequestSummaryMessages(question string) []Message {
-	ms := make([]Message, 0, 10)
-	ms = append(ms, *pa.System)
-	for _, fa := range pa.FilesSummary {
-		ms = append(ms, *fa.QA.Question)
-		ms = append(ms, *fa.QA.Answer)
-	}
-	m := Message{
-		Role:    openai.ChatMessageRoleUser,
-		Content: question,
-	}
-	ms = append(ms, m)
-	return ms
 }
 
 func (pa *PartialSummaries) SetSummaryQA(question, answer string) *QA {

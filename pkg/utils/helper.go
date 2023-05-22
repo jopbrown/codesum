@@ -75,15 +75,15 @@ func TrimMDTableHeader(summary string) string {
 	return sb.String()
 }
 
-func IsErrHTTP413(err error) bool {
+func IsErrMatchHTTPCode(err error, code int) bool {
 	if reqErr, ok := errors.AsIs[*openai.RequestError](err); ok {
-		if reqErr.HTTPStatusCode == 413 {
+		if reqErr.HTTPStatusCode == code {
 			return true
 		}
 	}
 
 	if errRes, ok := errors.AsIs[*openai.APIError](err); ok {
-		if errRes.HTTPStatusCode == 413 {
+		if errRes.HTTPStatusCode == code {
 			return true
 		}
 	}

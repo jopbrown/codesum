@@ -5,7 +5,7 @@ WORKSPACE := $(dir $(shell go env GOMOD))
 
 TARGET := windows-amd64 linux-amd64
 
-RESOURCE :=
+RESOURCE := config.yml
 
 CLEAN_PATH := tmp
 

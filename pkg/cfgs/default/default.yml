@@ -1,10 +1,10 @@
 DebugMode: false
 LogPath: ${appDir}/log/codesum.log
 ChatGpt:
-    EndPoint: ${CHATGPT_END_POINT}
-    APIKey: ${CHATGPT_API_KEY}
-    AccessToken: ${CHATGPT_ACCESS_TOKEN}
-    Proxy: ${HTTPS_PROXY}
+    EndPoint: ${env.CHATGPT_END_POINT}
+    APIKey: ${env.CHATGPT_API_KEY}
+    AccessToken: ${env.CHATGPT_ACCESS_TOKEN}
+    Proxy: ${env.HTTPS_PROXY}
     Model: gpt-3.5-turbo
 SummaryRules:
     Include:
@@ -22,7 +22,7 @@ SummaryRules:
         - dist
         - node_modules
     OutDir: ${appDir}/summary_report
-    OutFileName: summary_${timestamp}_${folderBaseName}.md
+    OutFileName: ${timestamp}_${folderBaseName}.md
 Prompt:
     System: |
         You are a software architect who is analyzing a code project.

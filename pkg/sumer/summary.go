@@ -2,6 +2,7 @@ package sumer
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/jopbrown/codesum/pkg/cfgs"
 	"github.com/jopbrown/codesum/pkg/utils"
+	"github.com/jopbrown/codesum/pkg/utils/try"
 
 	"github.com/jopbrown/gobase/errors"
 	"github.com/jopbrown/gobase/fsutil"
@@ -21,13 +23,14 @@ import (
 )
 
 type Summarizer struct {
-	cfg             *cfgs.Config
-	gptClient       *openai.Client
-	fileFilter      strutil.Matcher
-	pushMsgCallback func(msg *openai.ChatCompletionMessage)
+	cfg                  *cfgs.Config
+	gptClient            *openai.Client
+	fileFilter           strutil.Matcher
+	pushMsgCallback      func(msg *openai.ChatCompletionMessage)
+	streamAnswerCallback func(delta string)
 }
 
-func NewSummarizer(cfg *cfgs.Config, pushMsgCallback func(msg *openai.ChatCompletionMessage)) (*Summarizer, error) {
+func NewSummarizer(cfg *cfgs.Config, pushMsgCallback func(msg *openai.ChatCompletionMessage), streamAnswerCallbackOpt ...func(token string)) (*Summarizer, error) {
 	sumer := &Summarizer{}
 	sumer.cfg = cfg
 
@@ -56,18 +59,24 @@ func NewSummarizer(cfg *cfgs.Config, pushMsgCallback func(msg *openai.ChatComple
 
 	sumer.fileFilter = strutil.MakeMultiMatcher(includer.Any(), excluder.None()).All()
 	sumer.pushMsgCallback = pushMsgCallback
+	if len(streamAnswerCallbackOpt) > 0 {
+		sumer.streamAnswerCallback = streamAnswerCallbackOpt[0]
+	}
 
 	return sumer, nil
 }
 
-func (sumer *Summarizer) Summarize(ctx context.Context, codeFolder string) (err error) {
+func (sumer *Summarizer) Summarize(ctx context.Context, codeFolder string) (reportPath string, err error) {
 	codeFiles, err := fsutil.ListWithMatcher(codeFolder, sumer.fileFilter)
 	if err != nil {
-		return errors.ErrorAt(err)
+		return "", errors.ErrorAt(err)
 	}
 
 	cs := &CodeSummary{}
-	defer sumer.saveMarkdownReport(codeFolder, cs)
+	defer func() {
+		// save reports regardless of process success or failure
+		reportPath, _ = sumer.saveMarkdownReport(codeFolder, cs)
+	}()
 
 	ps := cs.AddPartialSummaries(sumer.cfg.Prompt.System.String())
 	sumer.pushMsgCallback(ps.System)
@@ -79,7 +88,7 @@ func (sumer *Summarizer) Summarize(ctx context.Context, codeFolder string) (err 
 
 		fileName, content, err := getCodeFileContent(codeFolder, fname)
 		if err != nil {
-			return errors.ErrorAt(err)
+			return "", errors.ErrorAt(err)
 		}
 
 		question := FileSummaryQuestion(sumer.cfg.Prompt.CodeSummary, fileName, content)
@@ -88,50 +97,55 @@ func (sumer *Summarizer) Summarize(ctx context.Context, codeFolder string) (err 
 		answer, err := sumer.sendRequest(ctx, msgs)
 
 		if err != nil {
-			if utils.IsErrHTTP413(err) && len(msgs) > 3 {
+			if utils.IsErrMatchHTTPCode(err, 413) && len(msgs) > 3 {
+				// out of max token, roll to next partial
 				ps = cs.AddPartialSummaries(sumer.cfg.Prompt.System.String())
 				msgs = ps.RequestFileSummaryMessages(question)
 				answer, err = sumer.sendRequest(ctx, msgs)
 				if err != nil {
-					return errors.ErrorAt(err)
+					return "", errors.ErrorAt(err)
 				}
 			} else {
-				return errors.ErrorAt(err)
+				return "", errors.ErrorAt(err)
 			}
 		}
 
 		ps.AddFileSummary(fileName, question, answer)
 	}
 
-	for _, ps := range cs.PartialList {
+	// for _, ps := range cs.PartialList {
+	for i := 0; i < len(cs.PartialList); /*i++*/ {
+		ps = cs.PartialList[i]
 		question := SummaryTableQuestion(sumer.cfg.Prompt.SummaryTable, ps.FileList())
-		msgs := ps.RequestSummaryMessages(question)
+		msgs := ps.RequestFileSummaryMessages(question)
 
 		answer, err := sumer.sendRequest(ctx, msgs)
 
 		if err != nil {
-			if utils.IsErrHTTP413(err) && len(msgs) > 3 {
+			if utils.IsErrMatchHTTPCode(err, 413) && len(msgs) > 3 {
+				// out of max token, pop the latest file
 				fs := ps.PopFileSummary()
+				question = SummaryTableQuestion(sumer.cfg.Prompt.SummaryTable, ps.FileList())
 				msgs = ps.RequestFileSummaryMessages(question)
 				answer, err = sumer.sendRequest(ctx, msgs)
 				if err != nil {
-					return errors.ErrorAt(err)
+					return "", errors.ErrorAt(err)
 				}
 
+				// add the poped file to addition partial
 				newPs := cs.AddPartialSummaries(sumer.cfg.Prompt.System.String())
 				newPs.AddFileSummary(fs.FileName, fs.QA.Question.Content, fs.QA.Answer.Content)
-				msgs = newPs.RequestFileSummaryMessages(question)
-				newAnswer, err := sumer.sendRequest(ctx, msgs)
-				if err != nil {
-					return errors.ErrorAt(err)
-				}
-				newPs.SetSummaryQA(question, newAnswer)
 			} else {
-				return errors.ErrorAt(err)
+				return "", errors.ErrorAt(err)
 			}
 		}
 
 		ps.SetSummaryQA(question, answer)
+
+		// check answer is valid JSON, or try again(not move to next iter)
+		if json.Valid([]byte(answer)) {
+			i++
+		}
 	}
 
 	{
@@ -140,30 +154,41 @@ func (sumer *Summarizer) Summarize(ctx context.Context, codeFolder string) (err 
 		answer, err := sumer.sendRequest(ctx, msgs)
 
 		if err != nil {
-			return errors.ErrorAt(err)
+			return "", errors.ErrorAt(err)
 		}
 		cs.SetFinalSummaryQA(question, answer)
 	}
 
 	if err != nil {
-		return errors.ErrorAt(err)
+		return "", errors.ErrorAt(err)
 	}
 
-	return nil
+	return
 }
 
 func (sumer *Summarizer) sendRequest(ctx context.Context, ms []openai.ChatCompletionMessage) (string, error) {
 	debugW := log.GetWriter(log.LevelDebug)
 
-	sumer.pushMsgCallback(&ms[len(ms)-1])
+	sumer.pushMsgCallback(&ms[len(ms)-1]) // push question
 
-	stream, err := sumer.gptClient.CreateChatCompletionStream(
-		ctx,
-		openai.ChatCompletionRequest{
-			Model:    sumer.cfg.ChatGpt.Model.String(),
-			Messages: ms,
-		},
-	)
+	var stream *openai.ChatCompletionStream
+	err := try.Do(func() error {
+		var err error
+		stream, err = sumer.gptClient.CreateChatCompletionStream(
+			ctx,
+			openai.ChatCompletionRequest{
+				Model:    sumer.cfg.ChatGpt.Model.String(),
+				Messages: ms,
+			},
+		)
+		if err != nil {
+			return errors.ErrorAt(err)
+		}
+		return nil
+	}, try.Option().SetLimitTimes(3).SetInterval(5*time.Second).SetOnFail(func(err error) bool {
+		return utils.IsErrMatchHTTPCode(err, 413) // out of max token, stop retry and return error
+	}))
+
 	if err != nil {
 		return "", errors.ErrorAt(err)
 	}
@@ -189,13 +214,19 @@ func (sumer *Summarizer) sendRequest(ctx context.Context, ms []openai.ChatComple
 		delta := resp.Choices[0].Delta.Content
 		sb.WriteString(delta)
 		io.WriteString(debugW, delta)
+		if sumer.streamAnswerCallback != nil {
+			sumer.streamAnswerCallback(delta)
+		}
 	}
 
 	answer := sb.String()
+
+	// push answer
 	sumer.pushMsgCallback(&Message{
-		Role:    openai.ChatMessageRoleUser,
+		Role:    openai.ChatMessageRoleAssistant,
 		Content: answer,
 	})
+
 	return answer, nil
 }
 
@@ -214,18 +245,14 @@ func getCodeFileContent(codeFolder, fname string) (name string, content string, 
 	return
 }
 
-func (sumer *Summarizer) saveMarkdownReport(codeFolder string, cs *CodeSummary) error {
-	dict := map[string]string{
-		"appDir":             fsutil.AppDir(),
-		"timestamp":          time.Now().Format("20060102150405"),
-		"codeFolderBaseName": filepath.Base(codeFolder),
-	}
-	err := cs.SaveMarkdown(filepath.Join(sumer.cfg.SummaryRules.OutDir.ExpandByDict(dict), sumer.cfg.SummaryRules.OutFileName.ExpandByDict(dict)))
+func (sumer *Summarizer) saveMarkdownReport(codeFolder string, cs *CodeSummary) (string, error) {
+	reportPath := sumer.cfg.SummaryRules.GetReportPath(codeFolder)
+	err := cs.SaveMarkdown(reportPath)
 	if err != nil {
-		return errors.ErrorAt(err)
+		return "", errors.ErrorAt(err)
 	}
 
-	return nil
+	return reportPath, nil
 }
 
 func isCtxCanceled(ctx context.Context) bool {
