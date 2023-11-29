@@ -40,6 +40,7 @@ Prompt:
         Briefly describe the features of the following files: [${filesCommaList}]
         Put the description in a JSON object as the format `{"{filename}":"{description}"}` .
         Each description should be answered in few sentences.
+        Do not wrap responses in quotes.
         Do not add other json fields.
         Do not add other information.
     FinalSummary: |

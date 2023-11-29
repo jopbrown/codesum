@@ -16,13 +16,18 @@ import (
 )
 
 func UpdateApiServerAccessToken(endpoint, token string) error {
+	type secret struct {
+		Token string `json:"token"`
+		PUID  string `json:"puid"`
+	}
+
 	url, err := url.ParseRequestURI(endpoint)
 	if err != nil {
 		return errors.ErrorAt(err)
 	}
 
 	reqUrl := fmt.Sprintf("%s://%s/admin/tokens", url.Scheme, url.Host)
-	tokens := []string{token}
+	tokens := map[string]secret{"": {Token: token}}
 
 	log.Debugf("send update token request to `%s`", reqUrl)
 

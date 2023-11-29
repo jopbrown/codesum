@@ -74,6 +74,7 @@ func (cs *CodeSummary) WriteFileSummaryTable(w io.Writer) {
 		summary := report.GetSummary()
 		err := json.Unmarshal([]byte(summary), &summaryDict)
 		if err != nil {
+			fmt.Fprint(w, err.Error())
 			fmt.Fprint(w, summary)
 		} else {
 			keys := maps.Keys(summaryDict)

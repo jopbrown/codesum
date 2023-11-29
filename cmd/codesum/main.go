@@ -60,7 +60,7 @@ func run() error {
 	log.Infof("%s %v-%v-%v", BuildName, BuildVersion, BuildHash, BuildTime)
 
 	accessToken := cfg.ChatGpt.AccessToken.String()
-	if len(accessToken) > 0 {
+	if strings.HasPrefix(accessToken, "eyJhbGciOiJSUzI1NiI") {
 		err = utils.UpdateApiServerAccessToken(cfg.ChatGpt.EndPoint.String(), accessToken)
 		if err != nil {
 			return errors.ErrorAt(err)

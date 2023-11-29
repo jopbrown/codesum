@@ -140,6 +140,8 @@ func (sumer *Summarizer) Summarize(ctx context.Context, codeFolder string) (repo
 			}
 		}
 
+		answer = trimJSONAnswer(answer)
+
 		ps.SetSummaryQA(question, answer)
 
 		// check answer is valid JSON, or try again(not move to next iter)
@@ -164,6 +166,14 @@ func (sumer *Summarizer) Summarize(ctx context.Context, codeFolder string) (repo
 	}
 
 	return
+}
+
+func trimJSONAnswer(answer string) string {
+	answer = strings.TrimSpace(answer)
+	answer = strings.TrimPrefix(answer, "```json")
+	answer = strings.TrimPrefix(answer, "```")
+	answer = strings.TrimSuffix(answer, "```")
+	return answer
 }
 
 func (sumer *Summarizer) sendRequest(ctx context.Context, ms []openai.ChatCompletionMessage) (string, error) {

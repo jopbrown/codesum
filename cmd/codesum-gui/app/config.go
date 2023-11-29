@@ -1,6 +1,7 @@
 package app
 
 import (
+	"strings"
 	"time"
 
 	"github.com/jopbrown/codesum/pkg/cfgs"
@@ -39,7 +40,7 @@ func (a *App) ApplyConfig(cfg *cfgs.Config) error {
 	a.cfg = cfg
 
 	accessToken := a.cfg.ChatGpt.AccessToken.String()
-	if len(accessToken) > 0 {
+	if strings.HasPrefix(accessToken, "eyJhbGciOiJSUzI1NiI") {
 		err := utils.UpdateApiServerAccessToken(a.cfg.ChatGpt.EndPoint.String(), accessToken)
 		if err != nil {
 			return wrapGoError(err)

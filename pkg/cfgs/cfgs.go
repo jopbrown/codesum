@@ -8,7 +8,6 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/jopbrown/gobase/errors"
 	"github.com/jopbrown/gobase/fsutil"
-	"github.com/jopbrown/gobase/must"
 	"github.com/jopbrown/gobase/strutil"
 	"gopkg.in/yaml.v3"
 )
@@ -27,8 +26,8 @@ type Config struct {
 var defaultCfgFs embed.FS
 
 func DefaultConfig() *Config {
-	r := must.Value(defaultCfgFs.Open("default/default.yml"))
-	cfg := must.Value(ReadConfig(r))
+	r := errors.Must1(defaultCfgFs.Open("default/default.yml"))
+	cfg := errors.Must1(ReadConfig(r))
 	return cfg
 }
 
